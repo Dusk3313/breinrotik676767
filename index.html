@@ -1,0 +1,1732 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#110c26">
+  <title>Rainbow Arcade — Rennen, Sauna & Küche</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #fff9ff;
+      --muted: #c2b6d5;
+      --panel: rgba(32, 21, 54, .82);
+      --rainbow: linear-gradient(100deg, #ff5378, #ffb84f 22%, #ebf56b 40%, #4ce1a1 58%, #51c8ff 76%, #c77aff);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(ellipse at 50% -20%, rgba(196, 66, 234, .28), transparent 52%),
+        radial-gradient(ellipse at 10% 70%, rgba(34, 196, 225, .13), transparent 38%),
+        #110c26;
+    }
+
+    body::before {
+      position: fixed;
+      z-index: -1;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,.32) .8px, transparent .8px);
+      background-size: 32px 32px;
+      opacity: .16;
+      content: "";
+      pointer-events: none;
+    }
+
+    button { font: inherit; }
+
+    .page { width: min(100% - 28px, 780px); margin: 0 auto; padding: 22px 0 32px; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: .73rem;
+      font-weight: 900;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .brand span { font-size: 1.4rem; }
+
+    header { margin-bottom: 18px; text-align: center; }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.4rem, 8vw, 4.3rem);
+      font-weight: 1000;
+      letter-spacing: -.075em;
+      line-height: .96;
+      text-shadow: 0 5px 30px rgba(209, 94, 255, .26);
+    }
+
+    h1 span {
+      color: transparent;
+      background: var(--rainbow);
+      background-clip: text;
+      -webkit-background-clip: text;
+    }
+
+    header p { margin: 10px 0 0; color: var(--muted); font-size: .9rem; }
+
+    .hud { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin-bottom: 10px; }
+
+    .stat {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: 15px;
+      background: var(--panel);
+      text-align: center;
+      backdrop-filter: blur(12px);
+    }
+
+    .stat-label { display: block; color: var(--muted); font-size: .62rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .stat-value { display: block; margin-top: 2px; font-size: clamp(1.15rem, 4vw, 1.55rem); font-weight: 1000; font-variant-numeric: tabular-nums; }
+    #distance { color: #62eaff; }
+    #speed { color: #b7ff78; }
+    #best { color: #ff9ee9; }
+    #stars { color: #ffe66d; }
+
+    .race-tools { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+    .nitro { flex: 1; padding: 9px 12px; border: 1px solid rgba(255,255,255,.11); border-radius: 13px; background: var(--panel); }
+    .nitro-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; color: var(--muted); font-size: .65rem; font-weight: 900; letter-spacing: .1em; }
+    .nitro-track { height: 7px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.12); }
+    .nitro-fill { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #51c8ff, #c77aff, #ff74bd); transition: width .16s; }
+    .tool-button { min-width: 46px; height: 43px; border: 1px solid rgba(255,255,255,.15); border-radius: 13px; color: white; background: var(--panel); font-weight: 900; cursor: pointer; }
+    .tool-button:hover { background: rgba(195,99,255,.24); }
+    .tool-button:disabled { opacity: .4; cursor: not-allowed; }
+
+    .track-shell {
+      position: relative;
+      overflow: hidden;
+      padding: 9px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 23px;
+      background: linear-gradient(145deg, rgba(79,54,112,.7), rgba(27,20,48,.94));
+      box-shadow: 0 22px 65px rgba(0,0,0,.35), inset 0 1px rgba(255,255,255,.1);
+    }
+
+    .track-rainbow {
+      position: absolute;
+      inset: 0 0 auto;
+      height: 5px;
+      background: var(--rainbow);
+    }
+
+    .canvas-wrap { position: relative; overflow: hidden; border-radius: 16px; background: #19253d; }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(64vh, 500px);
+      min-height: 340px;
+      touch-action: none;
+    }
+
+    .overlay {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      display: grid;
+      padding: 20px;
+      place-items: center;
+      background: rgba(15, 11, 34, .64);
+      backdrop-filter: blur(5px);
+      text-align: center;
+    }
+
+    .overlay[hidden] { display: none; }
+    .card { width: min(100%, 390px); }
+    .hero-emoji { font-size: 3.2rem; filter: drop-shadow(0 5px 15px rgba(255,255,255,.25)); }
+    .card h2 { margin: 6px 0 8px; font-size: clamp(1.6rem, 5vw, 2.25rem); letter-spacing: -.04em; }
+    .card p { margin: 0 auto 17px; color: #e4d8f3; font-size: .92rem; line-height: 1.5; }
+
+    .primary {
+      min-width: 190px;
+      padding: 13px 22px;
+      border: 0;
+      border-radius: 14px;
+      color: #1d1233;
+      background: var(--rainbow);
+      box-shadow: 0 7px 25px rgba(223, 102, 255, .3);
+      font-weight: 1000;
+      cursor: pointer;
+      transition: transform .15s, filter .15s;
+    }
+
+    .primary:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .primary:active { transform: scale(.98); }
+
+    .under-track { display: flex; justify-content: space-between; gap: 12px; margin: 10px 4px 0; color: var(--muted); font-size: .73rem; }
+    .under-track strong { color: white; }
+
+    .touch-controls { display: none; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+
+    .touch-button {
+      min-height: 48px;
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 14px;
+      color: white;
+      background: var(--panel);
+      font-size: 1.2rem;
+      font-weight: 900;
+      touch-action: manipulation;
+      user-select: none;
+    }
+
+    .touch-button:active { background: rgba(195,99,255,.36); }
+    .touch-button.boost { color: #2b1639; background: linear-gradient(100deg, #62eaff, #c77aff); }
+    .modes { display: flex; justify-content: center; gap: 8px; margin: 0 0 14px; }
+    .mode-button { padding: 7px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.04); font-size: .72rem; font-weight: 900; cursor: pointer; }
+    .mode-button[aria-pressed="true"] { border-color: rgba(255,255,255,.4); color: #211531; background: var(--rainbow); }
+    .mode-button:disabled, .car-choice:disabled { opacity: .58; cursor: not-allowed; }
+    .toast { position: absolute; z-index: 1; top: 17%; left: 50%; padding: 8px 13px; border: 1px solid rgba(255,255,255,.22); border-radius: 999px; color: white; background: rgba(21,13,39,.8); font-size: .78rem; font-weight: 1000; opacity: 0; transform: translate(-50%,-8px); transition: opacity .2s, transform .2s; pointer-events: none; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translate(-50%,0); }
+    .overlay .modes { margin: 0 0 15px; }
+    .garage { display: flex; justify-content: center; gap: 8px; margin: -5px 0 15px; }
+    .car-choice { display: grid; width: 48px; height: 40px; place-items: center; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; color: white; background: rgba(255,255,255,.06); font-size: 1.3rem; cursor: pointer; }
+    .car-choice[aria-pressed="true"] { border-color: #9afaff; box-shadow: 0 0 15px rgba(98,234,255,.32); background: rgba(98,234,255,.16); }
+    .sound-button { position: absolute; z-index: 3; top: 10px; right: 10px; width: 38px; height: 38px; border: 1px solid rgba(255,255,255,.2); border-radius: 50%; color: white; background: rgba(23,16,43,.66); cursor: pointer; }
+    .sound-button:hover { background: rgba(23,16,43,.95); }
+    .canvas-wrap { isolation: isolate; }
+    .canvas-wrap .sound-button { position: absolute; }
+    .arcade-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 18px 0; }
+    .arcade-tab { min-height: 47px; border: 1px solid rgba(255,255,255,.13); border-radius: 14px; color: var(--muted); background: rgba(255,255,255,.045); font-weight: 900; cursor: pointer; transition: transform .15s, background .15s; }
+    .arcade-tab:hover { transform: translateY(-2px); }
+    .arcade-tab[aria-pressed="true"] { border-color: rgba(255,255,255,.4); color: #20132e; background: var(--rainbow); }
+    .arcade-tab:disabled { opacity: .48; cursor: not-allowed; }
+    .arcade-tab:disabled:hover { transform: none; }
+    .pride-flags { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin: 12px auto; }
+    .pride-flag { position: relative; display: block; width: 35px; height: 23px; overflow: hidden; border: 1px solid rgba(255,255,255,.32); border-radius: 4px; box-shadow: 0 3px 9px rgba(0,0,0,.24); }
+    .pride-flag.rainbow { background: linear-gradient(to bottom, #e40303 0 16.66%, #ff8c00 16.66% 33.32%, #ffed00 33.32% 49.98%, #008026 49.98% 66.64%, #004dff 66.64% 83.3%, #750787 83.3%); }
+    .pride-flag.trans { background: linear-gradient(to bottom, #5bcefa 0 20%, #f5a9b8 20% 40%, #fff 40% 60%, #f5a9b8 60% 80%, #5bcefa 80%); }
+    .pride-flag.bi { background: linear-gradient(to bottom, #d60270 0 40%, #9b4f96 40% 60%, #0038a8 60%); }
+    .pride-flag.pan { background: linear-gradient(to bottom, #ff218c 0 33.33%, #ffd800 33.33% 66.66%, #21b1ff 66.66%); }
+    .pride-flag.nonbinary { background: linear-gradient(to bottom, #fff430 0 25%, #fff 25% 50%, #9c59d1 50% 75%, #282828 75%); }
+    .pride-flag.lesbian { background: linear-gradient(to bottom, #d52d00 0 20%, #ef7627 20% 40%, #fff 40% 60%, #d162a4 60% 80%, #a30262 80%); }
+    .pride-flag.ace { background: linear-gradient(to bottom, #000 0 25%, #a3a3a3 25% 50%, #fff 50% 75%, #800080 75%); }
+    .game-view[hidden] { display: none; }
+    .mini-panel { padding: clamp(14px, 3vw, 22px); border: 1px solid rgba(255,255,255,.14); border-radius: 23px; background: linear-gradient(145deg, rgba(79,54,112,.7), rgba(27,20,48,.94)); box-shadow: 0 22px 65px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.08); }
+    .mini-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .mini-head h2 { margin: 0; font-size: clamp(1.3rem, 5vw, 1.8rem); letter-spacing: -.04em; }
+    .mini-head p { margin: 5px 0 0; color: var(--muted); font-size: .82rem; line-height: 1.4; }
+    .mini-score { flex: 0 0 auto; padding: 8px 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; color: #ffec78; background: rgba(0,0,0,.17); font-weight: 1000; }
+    .sauna-room { position: relative; display: grid; min-height: 300px; overflow: hidden; place-items: center; border: 1px solid rgba(255,196,110,.25); border-radius: 18px; background: linear-gradient(180deg, #442351, #9b4e56 54%, #56343b); }
+    .sauna-room::before { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent 0 42px, rgba(255,211,150,.13) 43px 47px), linear-gradient(180deg, rgba(255,180,90,.16), transparent 50%); content: ""; }
+    .sauna-lamp { position: absolute; top: 24px; width: 80px; height: 7px; border-radius: 99px; background: #ffe4a0; box-shadow: 0 0 35px 13px rgba(255,198,103,.45); }
+    .steam { position: absolute; top: 35px; left: 18%; color: rgba(255,255,255,.45); font-size: 4rem; animation: steam 3s ease-in-out infinite alternate; }
+    .steam.second { top: 72px; right: 16%; left: auto; animation-delay: -1.2s; }
+    @keyframes steam { from { opacity: .2; transform: translateY(14px) scale(.8); } to { opacity: .7; transform: translateY(-12px) scale(1.1); } }
+    .sauna-bench { position: absolute; right: 8%; bottom: 36px; left: 8%; height: 68px; border: 7px solid #6a332e; border-right-width: 0; border-left-width: 0; background: repeating-linear-gradient(0deg, #c87949 0 11px, #995038 12px 17px); box-shadow: 0 13px 20px rgba(0,0,0,.2); }
+    .panther { position: absolute; z-index: 1; bottom: 67px; left: 25%; font-size: clamp(5rem, 22vw, 8rem); filter: drop-shadow(0 13px 12px rgba(0,0,0,.3)); transform-origin: 50% 88%; animation: panther-dance .62s ease-in-out infinite alternate; }
+    @keyframes panther-dance { 0% { transform: rotate(-10deg) translateY(0) scaleX(1); } 50% { transform: rotate(9deg) translateY(-14px) scaleX(.95); } 100% { transform: rotate(-5deg) translateY(-3px) scaleX(1.03); } }
+    .sauna-chef { position: absolute; z-index: 2; right: 16%; bottom: 62px; display: grid; justify-items: center; gap: 4px; font-size: 3.2rem; }
+    .speech { padding: 7px 10px; border: 1px solid rgba(255,255,255,.22); border-radius: 12px; color: #241536; background: #fff3bb; box-shadow: 0 5px 18px rgba(0,0,0,.22); font-size: .74rem; font-weight: 1000; white-space: nowrap; }
+    .mini-status { min-height: 25px; margin: 13px 0 8px; color: #e6d9f4; font-size: .83rem; font-weight: 800; text-align: center; }
+    .beat-display { display: grid; width: 74px; height: 74px; margin: 0 auto 12px; place-items: center; border: 2px solid rgba(255,255,255,.19); border-radius: 22px; background: rgba(14,11,28,.32); font-size: 2.4rem; font-weight: 1000; }
+    .beat-display.live { border-color: #ffe66d; box-shadow: 0 0 28px rgba(255,230,109,.42); animation: beat-pop .42s ease-in-out infinite alternate; }
+    @keyframes beat-pop { to { transform: scale(1.08); } }
+    .dance-pads { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .dance-pad, .ingredient { min-height: 52px; border: 1px solid rgba(255,255,255,.15); border-radius: 14px; color: white; background: rgba(255,255,255,.07); font-size: 1.35rem; font-weight: 1000; cursor: pointer; touch-action: manipulation; }
+    .dance-pad:hover, .ingredient:hover { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.15); }
+    .dance-pad:active, .ingredient:active { transform: scale(.96); }
+    .mini-actions { display: flex; justify-content: center; margin-top: 13px; }
+    .chef-stage { position: relative; display: flex; min-height: 176px; align-items: center; justify-content: center; gap: clamp(12px, 7vw, 44px); overflow: hidden; border-radius: 18px; background: radial-gradient(ellipse at 50% 105%, rgba(255,152,83,.38), transparent 55%), linear-gradient(145deg, #282452, #633966); }
+    .chef-avatar { font-size: clamp(5rem, 20vw, 7rem); filter: drop-shadow(0 10px 12px rgba(0,0,0,.25)); animation: chef-bob 1s ease-in-out infinite alternate; }
+    @keyframes chef-bob { to { transform: translateY(-5px) rotate(3deg); } }
+    .pot { font-size: clamp(4rem, 15vw, 5.2rem); filter: drop-shadow(0 8px 10px rgba(0,0,0,.25)); animation: pot-wiggle .7s ease-in-out infinite alternate; }
+    @keyframes pot-wiggle { to { transform: rotate(5deg); } }
+    .order-card { margin: 13px 0 10px; padding: 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; background: rgba(0,0,0,.16); text-align: center; }
+    .order-label { display: block; margin-bottom: 5px; color: var(--muted); font-size: .66rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .order-item { color: #fff1a1; font-size: 1.35rem; font-weight: 1000; }
+    .ingredients { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .ingredient { display: grid; min-height: 62px; place-items: center; font-size: 1.75rem; }
+    .ingredient:disabled, .dance-pad:disabled { opacity: .45; cursor: not-allowed; }
+    .mini-tip { margin: 12px 0 0; color: var(--muted); font-size: .74rem; text-align: center; }
+    .order-card .primary { min-width: 0; margin-top: 12px; padding: 10px 15px; font-size: .78rem; }
+    .ballerina-stage { min-height: 260px; perspective: 700px; background: radial-gradient(ellipse at 50% 100%, rgba(255,199,92,.42), transparent 58%), linear-gradient(145deg, #432c70, #b54d93); }
+    .dance-floor { position: absolute; right: 12%; bottom: 17px; left: 12%; height: 24px; border: 1px solid rgba(255,255,255,.28); border-radius: 50%; background: radial-gradient(ellipse, rgba(255,225,171,.58), rgba(226,116,203,.25) 55%, transparent 72%); box-shadow: 0 0 22px rgba(255,212,125,.3); }
+    .dance-pole { position: absolute; z-index: 1; bottom: 24px; left: 50%; width: 13px; height: 190px; border: 1px solid rgba(255,255,255,.7); border-radius: 8px; background: linear-gradient(90deg, #7a577f 0%, #fff0d6 23%, #c49abe 45%, #fff7df 69%, #735276 100%); box-shadow: 0 0 15px rgba(255,224,255,.42), inset 0 0 5px white; transform: translateX(-50%); }
+    .dance-pole::before, .dance-pole::after { position: absolute; left: 50%; width: 38px; height: 9px; border: 1px solid rgba(255,255,255,.6); border-radius: 50%; background: linear-gradient(90deg, #aa79a2, #fff4d7, #9b719a); content: ""; transform: translateX(-50%); }
+    .dance-pole::before { top: -3px; }
+    .dance-pole::after { bottom: -3px; }
+    .ballerina-orbit { position: absolute; z-index: 2; inset: 20px 0 18px; transform-style: preserve-3d; animation: ballerina-orbit 4.8s linear infinite; }
+    @keyframes ballerina-orbit { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+    .ballerina { position: absolute; top: 50%; left: 50%; width: 100px; height: 172px; transform: translate3d(66px,-50%,72px); transform-style: preserve-3d; filter: drop-shadow(0 12px 10px rgba(25,11,40,.35)); animation: ballerina-pose .7s ease-in-out infinite alternate; }
+    @keyframes ballerina-pose { from { margin-top: 5px; } to { margin-top: -6px; } }
+    .ballerina-head { position: absolute; z-index: 3; top: 0; left: 29px; width: 48px; height: 48px; border: 3px solid rgba(255,255,255,.55); border-radius: 13px 13px 18px 18px; background: linear-gradient(100deg, #c99d8d, #ffe1c1 45%, #a87978); box-shadow: inset -6px -4px 0 rgba(101,50,73,.18), 0 5px 9px rgba(0,0,0,.2); transform: rotateY(-12deg); }
+    .ballerina-head::before { position: absolute; top: -9px; left: -4px; width: 50px; height: 16px; border: 2px solid rgba(255,255,255,.55); border-radius: 9px 9px 4px 4px; background: linear-gradient(90deg,#6e3c67,#d991ac,#70456f); content: ""; }
+    .ballerina-head::after { position: absolute; top: 20px; left: 11px; width: 19px; height: 5px; border-right: 3px solid #583b54; border-left: 3px solid #583b54; content: ""; }
+    .ballerina-body { position: absolute; top: 49px; left: 41px; width: 26px; height: 46px; border-radius: 12px 12px 8px 8px; background: linear-gradient(90deg,#8c557c,#f7c4da 43%,#aa6c9c); box-shadow: inset -4px 0 rgba(75,34,81,.24); }
+    .ballerina-tutu { position: absolute; z-index: 2; top: 79px; left: 22px; width: 63px; height: 28px; border: 2px solid rgba(255,255,255,.65); border-radius: 12px 12px 30px 30px; background: repeating-conic-gradient(from 6deg at 50% 12%, #ffd8ef 0deg 14deg, #ce82c0 15deg 27deg); box-shadow: 0 5px 9px rgba(53,21,66,.3); }
+    .ballerina-arm { position: absolute; top: 57px; left: 23px; width: 10px; height: 52px; border: 3px solid #f4c9d9; border-radius: 99px; background: linear-gradient(90deg,#a86895,#ffe3e3); transform: rotate(31deg); transform-origin: 50% 0; animation: arm-sway 1s ease-in-out infinite alternate; }
+    .ballerina-arm.right { left: 69px; transform: rotate(-44deg); animation-delay: -.6s; }
+    @keyframes arm-sway { to { transform: rotate(24deg); } }
+    .ballerina-leg { position: absolute; top: 101px; left: 41px; width: 9px; height: 48px; border-radius: 99px; background: linear-gradient(90deg,#f6d2e8,#fff4ec,#b57da9); transform: rotate(9deg); transform-origin: 50% 0; animation: leg-sway .7s ease-in-out infinite alternate; }
+    .ballerina-leg.right { left: 57px; transform: rotate(-17deg); animation-delay: -.4s; }
+    @keyframes leg-sway { to { transform: rotate(-22deg); } }
+    .ballerina-shoe { position: absolute; bottom: 5px; left: 36px; width: 19px; height: 9px; border-radius: 70% 20% 50% 40%; background: linear-gradient(#fff0cc,#c879ad); transform: rotate(-15deg); }
+    .ballerina-shoe.right { left: 54px; bottom: 2px; transform: rotate(15deg); }
+    .ballerina-reaction { position: absolute; z-index: 4; top: 18%; left: 50%; font-size: 2rem; opacity: 0; pointer-events: none; transform: translateX(-50%); }
+    .ballerina-stage.reacting-kiss .ballerina-reaction { animation: hearts-float 1.15s ease-out forwards; }
+    .ballerina-stage.reacting-highfive .ballerina-reaction { animation: highfive-pop .75s ease-out forwards; }
+    .ballerina-stage.reacting-kiss .ballerina-head { box-shadow: inset -6px -4px 0 rgba(101,50,73,.18), 0 0 15px #ff8fcf; }
+    .ballerina-stage.reacting-highfive .ballerina { filter: drop-shadow(0 0 16px #ffe66d); }
+    @keyframes hearts-float { 0% { opacity: 0; transform: translate(-50%,18px) scale(.5); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-55px) scale(1.3); } }
+    @keyframes highfive-pop { 0% { opacity: 0; transform: translate(-50%,12px) scale(.6) rotate(-12deg); } 35% { opacity: 1; transform: translate(-50%,-8px) scale(1.25) rotate(12deg); } 100% { opacity: 0; transform: translate(-50%,-28px) scale(.9); } }
+    .ballerina-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 12px; }
+    .ballerina-action { min-height: 46px; border: 1px solid rgba(255,255,255,.16); border-radius: 13px; color: white; background: rgba(255,255,255,.08); font-weight: 900; cursor: pointer; transition: transform .15s, background .15s; }
+    .ballerina-action:hover { transform: translateY(-2px); background: rgba(255,255,255,.15); }
+    .ballerina-action:active { transform: scale(.97); }
+    .friendship { margin: 14px 0 8px; padding: 12px; border: 1px solid rgba(255,255,255,.13); border-radius: 14px; background: rgba(0,0,0,.15); }
+    .friendship-label { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 7px; color: #ffe4f2; font-size: .75rem; font-weight: 900; }
+    .friendship-track { height: 11px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 99px; background: rgba(255,255,255,.1); }
+    .friendship-fill { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff74bd, #ffadbd, #ffe781); transition: width .4s ease; }
+    .compliments { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
+    .compliment-button { min-height: 42px; padding: 8px; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; color: #fff7ff; background: rgba(255,255,255,.07); font-size: .76rem; font-weight: 800; cursor: pointer; }
+    .compliment-button:hover { border-color: rgba(255,190,228,.6); background: rgba(255,125,197,.16); }
+    .compliment-button:disabled { opacity: .48; cursor: not-allowed; }
+    .password-gate { width: min(100%, 410px); margin: clamp(24px, 8vw, 56px) auto; padding: 24px; border: 1px solid rgba(255,255,255,.18); border-radius: 20px; background: rgba(15,11,34,.45); text-align: center; }
+    .password-gate[hidden], .ballerina-content[hidden] { display: none; }
+    .password-gate h2 { margin: 0 0 8px; font-size: 1.5rem; }
+    .password-gate p { color: var(--muted); font-size: .86rem; line-height: 1.5; }
+    .password-form { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 16px; }
+    .password-input { flex: 1 1 160px; min-width: 0; min-height: 46px; padding: 10px 13px; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; outline: none; color: white; background: rgba(0,0,0,.24); font: inherit; }
+    .password-input:focus { border-color: #e7a9ff; box-shadow: 0 0 0 3px rgba(199,122,255,.2); }
+    .password-error { min-height: 1.2em; margin: 10px 0 0; color: #ff9aa9; font-size: .82rem; font-weight: 800; }
+    .shake-party[hidden] { display: none; }
+    .shake-party { position: fixed; z-index: 20; inset: 0; display: grid; overflow: hidden; padding: 22px; place-items: center; background: rgba(28,16,48,.84); backdrop-filter: blur(7px); animation: party-appear .3s ease-out; }
+    @keyframes party-appear { from { opacity: 0; } to { opacity: 1; } }
+    .shake-party-card { position: relative; z-index: 2; width: min(100%, 400px); padding: 26px 20px; border: 1px solid rgba(255,255,255,.4); border-radius: 24px; background: linear-gradient(145deg,#fff1fc,#ffd1e7 48%,#eacbff); box-shadow: 0 22px 70px rgba(0,0,0,.4),0 0 45px rgba(255,147,208,.42); color: #3a214d; text-align: center; animation: party-bounce .55s cubic-bezier(.2,.8,.25,1.3); }
+    @keyframes party-bounce { from { opacity: 0; transform: scale(.72) rotate(-4deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+    .shake-party-title { margin: 0 0 7px; font-size: clamp(1.7rem,7vw,2.4rem); font-weight: 1000; }
+    .shake-party-copy { margin: 0 0 17px; color: #654876; font-weight: 800; line-height: 1.5; }
+    .shake-party .primary { background: linear-gradient(100deg,#ff87c9,#ffda79,#c8a4ff); }
+    .shake-splat { position: absolute; z-index: 1; width: min(36vw,190px); aspect-ratio: 1; border: 5px solid rgba(255,255,255,.72); border-radius: 48% 52% 62% 38%; background: radial-gradient(circle at 34% 30%,#fff 0 13%,#fff3fa 14% 42%,#ffd1e5 70%,#f6a9d2 100%); box-shadow: 0 12px 35px rgba(255,211,235,.35); animation: splat-in .7s cubic-bezier(.15,.8,.25,1.2) both; }
+    .shake-splat::before,.shake-splat::after { position: absolute; width: 35%; aspect-ratio: 1; border: 4px solid rgba(255,255,255,.65); border-radius: 50%; background: #ffe4f2; content: ""; }
+    .shake-splat::before { top: -25%; left: 15%; }
+    .shake-splat::after { right: -14%; bottom: 10%; width: 25%; }
+    .shake-splat.one { top: -7%; left: -6%; transform: rotate(-24deg); }
+    .shake-splat.two { right: -8%; bottom: -8%; width: min(44vw,235px); animation-delay: .12s; }
+    .shake-splat.three { top: 20%; right: 7%; width: min(17vw,88px); animation-delay: .2s; }
+    @keyframes splat-in { from { opacity: 0; scale: .2; } to { opacity: .96; scale: 1; } }
+    .fake-ad {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 21px;
+      padding: 17px 19px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 92% 20%, rgba(255,209,94,.22), transparent 34%),
+        linear-gradient(110deg, rgba(114,52,170,.62), rgba(38,70,111,.68) 58%, rgba(161,54,132,.56));
+      box-shadow: 0 12px 30px rgba(0,0,0,.2), inset 0 1px rgba(255,255,255,.12);
+    }
+
+    .ad-copy { min-width: 0; }
+    .ad-tag { display: inline-block; margin-bottom: 5px; color: #ffe66d; font-size: .61rem; font-weight: 1000; letter-spacing: .14em; }
+    .ad-copy h2 { margin: 0 0 4px; font-size: 1.05rem; }
+    .ad-copy p { margin: 0; color: #e2d6ef; font-size: .75rem; line-height: 1.45; }
+    .ad-button {
+      flex: 0 0 auto;
+      padding: 10px 13px;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 12px;
+      color: #241536;
+      background: linear-gradient(100deg, #ffe46f, #ffad79);
+      font-size: .73rem;
+      font-weight: 1000;
+      cursor: pointer;
+      transition: transform .15s, filter .15s;
+    }
+
+    .ad-button:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    footer { margin-top: 13px; color: rgba(194,182,213,.62); font-size: .67rem; text-align: center; }
+
+    @media (max-width: 560px) {
+      .page { width: min(100% - 20px, 780px); padding-top: 15px; }
+      canvas { height: min(58vh, 460px); min-height: 330px; }
+      .hud { grid-template-columns: repeat(2, 1fr); }
+      .touch-controls { display: grid; }
+      .under-track { font-size: .68rem; }
+      .fake-ad { align-items: flex-start; flex-direction: column; gap: 10px; padding: 15px; }
+      .arcade-nav { gap: 5px; }
+      .arcade-tab { padding: 4px; font-size: .75rem; }
+      .sauna-room { min-height: 255px; }
+      .panther { left: 18%; }
+      .sauna-chef { right: 9%; }
+      .mini-head p { max-width: 240px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+    @media (prefers-reduced-motion: reduce) {
+      .ballerina-orbit, .ballerina, .ballerina-arm, .ballerina-leg, .ballerina-stage.reacting-kiss .ballerina-reaction, .ballerina-stage.reacting-highfive .ballerina-reaction {
+        animation-duration: 4.8s;
+        animation-iteration-count: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="brand"><span>🎮</span> Brainrot Arcade</div>
+    <header>
+      <h1>RAINBOW <span>ARCADE</span></h1>
+      <p>Vier Mini-Games, null Langeweile. Such dir deine Challenge aus! ✨</p>
+      <div class="pride-flags" aria-hidden="true"><span class="pride-flag rainbow"></span><span class="pride-flag trans"></span><span class="pride-flag bi"></span><span class="pride-flag pan"></span><span class="pride-flag nonbinary"></span><span class="pride-flag lesbian"></span><span class="pride-flag ace"></span></div>
+    </header>
+
+    <nav class="arcade-nav" aria-label="Minispiele auswählen">
+      <button class="arcade-tab" type="button" data-view="race" aria-pressed="true">🏎️ Rennen</button>
+      <button class="arcade-tab" type="button" data-view="sauna" aria-pressed="false">🐆 Sauna-Beats</button>
+      <button class="arcade-tab" type="button" data-view="kitchen" aria-pressed="false">🍳 Koch-Alarm</button>
+      <button class="arcade-tab" id="ballerina-tab" type="button" data-view="ballerina" aria-pressed="false" disabled title="Erst den virtuellen Schnee-Slush probieren!">🔒 Chiki-Briki</button>
+    </nav>
+    <div class="pride-flags" aria-hidden="true"><span class="pride-flag rainbow"></span><span class="pride-flag trans"></span><span class="pride-flag bi"></span><span class="pride-flag pan"></span><span class="pride-flag nonbinary"></span><span class="pride-flag lesbian"></span><span class="pride-flag ace"></span></div>
+
+    <section class="game-view" id="race-view" data-game-view="race" aria-label="Rainbow Racer">
+    <div class="pride-flags" aria-hidden="true"><span class="pride-flag rainbow"></span><span class="pride-flag trans"></span><span class="pride-flag bi"></span><span class="pride-flag pan"></span><span class="pride-flag nonbinary"></span><span class="pride-flag lesbian"></span><span class="pride-flag ace"></span></div>
+    <section class="hud" aria-label="Rennstatistik">
+      <div class="stat"><span class="stat-label">Strecke</span><span class="stat-value" id="distance">0 m</span></div>
+      <div class="stat"><span class="stat-label">Tempo</span><span class="stat-value" id="speed">0 km/h</span></div>
+      <div class="stat"><span class="stat-label">Sterne</span><span class="stat-value" id="stars">0</span></div>
+      <div class="stat"><span class="stat-label">Rekord</span><span class="stat-value" id="best">0 m</span></div>
+    </section>
+    <div class="race-tools">
+      <div class="nitro" aria-label="Nitro-Vorrat">
+        <div class="nitro-top"><span>⚡ NITRO</span><span id="nitro-hint">Sterne sammeln</span></div>
+        <div class="nitro-track"><div class="nitro-fill" id="nitro-fill"></div></div>
+      </div>
+      <button class="tool-button" id="boost" type="button" aria-label="Nitro zünden" title="Nitro zünden (Shift)" disabled>⚡</button>
+      <button class="tool-button" id="pause" type="button" aria-label="Spiel pausieren" title="Pause (P)" disabled>Ⅱ</button>
+    </div>
+    <div class="modes" id="modes" aria-label="Schwierigkeitsgrad">
+      <button class="mode-button" type="button" data-mode="chill" aria-pressed="true">🌤️ Chill</button>
+      <button class="mode-button" type="button" data-mode="normal" aria-pressed="false">🏁 Normal</button>
+      <button class="mode-button" type="button" data-mode="turbo" aria-pressed="false">🔥 Turbo</button>
+    </div>
+
+    <section class="track-shell" aria-label="Rennspiel">
+      <div class="track-rainbow"></div>
+      <div class="canvas-wrap">
+        <canvas id="game" aria-label="Fahr mit den Pfeiltasten oder A und D und weiche Hindernissen aus"></canvas>
+        <button class="sound-button" id="sound" type="button" aria-label="Sound einschalten" title="Sound einschalten">🔇</button>
+        <div class="toast" id="toast" aria-live="polite"></div>
+        <div class="overlay" id="overlay">
+          <div class="card">
+            <div class="hero-emoji" id="result-emoji">🏎️🌈</div>
+            <h2 id="overlay-title">Anschnallen, Racer!</h2>
+            <p id="overlay-copy">Wechsle die Spur, sammle Sterne und fülle damit deinen Nitro-Boost. Du hast drei Leben — zünde Nitro mit Shift oder ⚡, um kurz unverwundbar zu sein!</p>
+            <div class="garage" aria-label="Auto auswählen">
+              <button class="car-choice" type="button" data-car="0" aria-label="Pinkes Auto auswählen" aria-pressed="true">🏎️</button>
+              <button class="car-choice" type="button" data-car="1" aria-label="Blaues Auto auswählen" aria-pressed="false">🚙</button>
+              <button class="car-choice" type="button" data-car="2" aria-label="Goldenes Auto auswählen" aria-pressed="false">🏎️</button>
+            </div>
+            <div class="modes" aria-label="Schwierigkeitsgrad">
+              <button class="mode-button" type="button" data-mode="chill" aria-pressed="true">🌤️ Chill</button>
+              <button class="mode-button" type="button" data-mode="normal" aria-pressed="false">🏁 Normal</button>
+              <button class="mode-button" type="button" data-mode="turbo" aria-pressed="false">🔥 Turbo</button>
+            </div>
+            <button class="primary" id="start" type="button">RENNEN STARTEN 🚦</button>
+          </div>
+        </div>
+      </div>
+      <div class="under-track"><span><strong>← →</strong> Lenken · <strong>Shift</strong> Nitro · <strong>P</strong> Pause</span><span>⭐ = Nitro · 🚧 = Schaden</span></div>
+    </section>
+
+    <div class="touch-controls" aria-label="Touch-Steuerung">
+      <button class="touch-button" id="left" type="button" aria-label="Nach links lenken">⬅️ LINKS</button>
+      <button class="touch-button boost" id="touch-boost" type="button" aria-label="Nitro zünden">⚡ NITRO</button>
+      <button class="touch-button" id="right" type="button" aria-label="Nach rechts lenken">RECHTS ➡️</button>
+    </div>
+    </section>
+
+    <section class="game-view mini-panel" id="sauna-view" data-game-view="sauna" aria-label="Sauna-Beats Minispiel" hidden>
+      <div class="pride-flags" aria-hidden="true"><span class="pride-flag rainbow"></span><span class="pride-flag trans"></span><span class="pride-flag bi"></span><span class="pride-flag pan"></span><span class="pride-flag nonbinary"></span><span class="pride-flag lesbian"></span><span class="pride-flag ace"></span></div>
+      <div class="mini-head">
+        <div><h2>🐆 Sauna-Beats</h2><p>Triff die Pfeile im Takt und bring die Sauna zum Beben!</p></div>
+        <div class="mini-score">Punkte <span id="sauna-score">0</span> · <span id="sauna-time">25</span>s</div>
+      </div>
+      <div class="sauna-room" aria-label="Ein tanzender Panther und ein Koch in einer bunten Sauna">
+        <div class="sauna-lamp"></div><div class="steam">♨</div><div class="steam second">♨</div>
+        <div class="sauna-bench"></div>
+        <div class="panther" id="panther" aria-label="Tanzender Panther">🐆</div>
+        <div class="sauna-chef"><button class="speech" id="chef-line" type="button" aria-label="Koch Bratan sagen">Koch, Bratan!</button><span aria-hidden="true">🧑‍🍳</span></div>
+      </div>
+      <div class="mini-status" id="sauna-status" aria-live="polite">Drück Start und folge den Beat-Pfeilen!</div>
+      <div class="beat-display" id="beat-display" aria-label="Nächster Tanzschritt">🎵</div>
+      <div class="dance-pads" aria-label="Tanzschritte">
+        <button class="dance-pad" type="button" data-dance="←" aria-label="Tanzschritt links">⬅️</button>
+        <button class="dance-pad" type="button" data-dance="↓" aria-label="Tanzschritt runter">⬇️</button>
+        <button class="dance-pad" type="button" data-dance="↑" aria-label="Tanzschritt hoch">⬆️</button>
+        <button class="dance-pad" type="button" data-dance="→" aria-label="Tanzschritt rechts">➡️</button>
+      </div>
+      <div class="mini-actions"><button class="primary" id="sauna-start" type="button">SAUNA-SET STARTEN 🔥</button></div>
+      <p class="mini-tip">Tastatur: Pfeiltasten · Du hast 25 Sekunden pro Set.</p>
+    </section>
+
+    <section class="game-view mini-panel" id="kitchen-view" data-game-view="kitchen" aria-label="Koch-Alarm Minispiel" hidden>
+      <div class="pride-flags" aria-hidden="true"><span class="pride-flag rainbow"></span><span class="pride-flag trans"></span><span class="pride-flag bi"></span><span class="pride-flag pan"></span><span class="pride-flag nonbinary"></span><span class="pride-flag lesbian"></span><span class="pride-flag ace"></span></div>
+      <div class="mini-head">
+        <div><h2>🍳 Koch-Alarm</h2><p>Der Chef ruft die Bestellung — klick schnell die richtige Zutat!</p></div>
+        <div class="mini-score">Punkte <span id="kitchen-score">0</span> · <span id="kitchen-time">20</span>s</div>
+      </div>
+      <div class="chef-stage">
+        <div class="chef-avatar" aria-hidden="true">🧑‍🍳</div>
+        <button class="speech" id="kitchen-speech" type="button">„Koch, Bratan!“</button>
+        <div class="pot" aria-hidden="true">🍲</div>
+      </div>
+      <div class="mini-status" id="kitchen-status" aria-live="polite">Bestellungen in 20 Sekunden. Bist du bereit?</div>
+      <div class="order-card"><span class="order-label">Die Bestellung</span><span class="order-item" id="order-item">🥔 Kartoffel</span></div>
+      <div class="ingredients" aria-label="Zutaten auswählen">
+        <button class="ingredient" type="button" data-ingredient="🥔" aria-label="Kartoffel">🥔</button>
+        <button class="ingredient" type="button" data-ingredient="🥕" aria-label="Karotte">🥕</button>
+        <button class="ingredient" type="button" data-ingredient="🍅" aria-label="Tomate">🍅</button>
+        <button class="ingredient" type="button" data-ingredient="🧀" aria-label="Käse">🧀</button>
+      </div>
+      <div class="mini-actions"><button class="primary" id="kitchen-start" type="button">BESTELLUNGEN ANNEHMEN 👨‍🍳</button></div>
+      <p class="mini-tip">Zutaten antippen oder Taste 1–4 (von links nach rechts). Klick auf „Koch, Bratan!“ für Sprachausgabe!</p>
+      <div class="order-card">
+        <span class="order-label">Geheime Freischaltung</span>
+        <span class="order-item">❄️ Schnee-Slush (nur virtuell!)</span>
+        <p class="mini-tip">Probier den virtuellen Schnee-Slush, um Chiki-Briki freizuschalten. Echten Schnee bitte nicht essen.</p>
+        <button class="primary" id="snow-snack" type="button">VIRTUELLEN SNOW-SLUSH PROBIEREN ❄️</button>
+      </div>
+    </section>
+
+    <section class="game-view mini-panel" id="ballerina-view" data-game-view="ballerina" aria-label="Chiki-Briki Minispiel" hidden>
+      <div class="pride-flags" aria-hidden="true"><span class="pride-flag rainbow"></span><span class="pride-flag trans"></span><span class="pride-flag bi"></span><span class="pride-flag pan"></span><span class="pride-flag nonbinary"></span><span class="pride-flag lesbian"></span><span class="pride-flag ace"></span></div>
+      <div class="password-gate" id="ballerina-password-gate">
+        <div aria-hidden="true" style="font-size:3rem">🔒☕</div>
+        <h2>Geheime Tanzrunde</h2>
+        <p>Dieses Minispiel ist passwortgeschützt. Gib das Passwort ein, um weiterzutanzen.</p>
+        <form class="password-form" id="ballerina-password-form">
+          <input class="password-input" id="ballerina-password" type="password" inputmode="numeric" maxlength="9" autocomplete="off" placeholder="Passwort" aria-label="Passwort für Chiki-Briki" required>
+          <button class="primary" type="submit">ÖFFNEN 🔑</button>
+        </form>
+        <p class="password-error" id="ballerina-password-error" role="status" aria-live="polite"></p>
+      </div>
+      <div class="ballerina-content" id="ballerina-content" hidden>
+      <div class="pride-flags" aria-hidden="true"><span class="pride-flag rainbow"></span><span class="pride-flag trans"></span><span class="pride-flag bi"></span><span class="pride-flag pan"></span><span class="pride-flag nonbinary"></span><span class="pride-flag lesbian"></span><span class="pride-flag ace"></span></div>
+      <div class="mini-head">
+        <div><h2>☕ Chiki-Briki!</h2><p>Tanzfee Mokka zeigt dir eine Tanzfolge. Merk sie dir und tipp sie nach!</p></div>
+        <div class="mini-score">Punkte <span id="ballerina-score">0</span></div>
+      </div>
+      <div class="chef-stage ballerina-stage" aria-label="Tanzfee Mokka tanzt dreidimensional um eine Tanzstange">
+        <div class="dance-floor" aria-hidden="true"></div>
+        <div class="dance-pole" aria-hidden="true"></div>
+        <div class="ballerina-reaction" id="ballerina-reaction" aria-hidden="true"></div>
+        <div class="ballerina-orbit" aria-hidden="true">
+          <div class="ballerina" id="ballerina-character" aria-label="3D tanzende Tanzfee Mokka">
+            <div class="ballerina-head"></div>
+            <div class="ballerina-body"></div>
+            <div class="ballerina-arm"></div>
+            <div class="ballerina-arm right"></div>
+            <div class="ballerina-tutu"></div>
+            <div class="ballerina-leg"></div>
+            <div class="ballerina-leg right"></div>
+            <div class="ballerina-shoe"></div>
+            <div class="ballerina-shoe right"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ballerina-actions" aria-label="Freundliche Interaktionen">
+        <button class="ballerina-action" id="send-kiss" type="button">Küsschen schicken 💋</button>
+        <button class="ballerina-action" id="give-highfive" type="button">High-five geben ✋</button>
+      </div>
+      <div class="friendship" aria-label="Freundschaftsanzeige">
+        <div class="friendship-label"><span>💖 Freundschaft mit Mokka</span><span id="friendship-value">0%</span></div>
+        <div class="friendship-track" id="friendship-track" role="progressbar" aria-label="Freundschaft mit Mokka" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="friendship-fill" id="friendship-fill"></div>
+        </div>
+        <div class="compliments" aria-label="Komplimente schicken">
+          <button class="compliment-button" type="button" data-compliment="dance">Dein Tanz ist toll! 💃</button>
+          <button class="compliment-button" type="button" data-compliment="style">Dein Outfit glitzert! ✨</button>
+          <button class="compliment-button" type="button" data-compliment="kind">Du bringst gute Laune! 🌈</button>
+          <button class="compliment-button" type="button" data-compliment="brave">Du bist super mutig! ⭐</button>
+        </div>
+      </div>
+      <div class="mini-status" id="ballerina-status" aria-live="polite">Geheime Tanzrunde freigeschaltet! Bereit?</div>
+      <div class="order-card"><span class="order-label">Merke dir die Folge</span><span class="order-item" id="ballerina-sequence">☕ 🩰 ✨</span></div>
+      <div class="dance-pads" aria-label="Tanzfolge eingeben">
+        <button class="dance-pad" type="button" data-ballerina-step="←" aria-label="Folge links">⬅️</button>
+        <button class="dance-pad" type="button" data-ballerina-step="↓" aria-label="Folge runter">⬇️</button>
+        <button class="dance-pad" type="button" data-ballerina-step="↑" aria-label="Folge hoch">⬆️</button>
+        <button class="dance-pad" type="button" data-ballerina-step="→" aria-label="Folge rechts">➡️</button>
+      </div>
+      <div class="mini-actions"><button class="primary" id="ballerina-start" type="button">TANZFOLGE STARTEN 🩰</button></div>
+      <p class="mini-tip">Folge den Pfeilen mit den Tasten oder Buttons. Jede Runde wird die Folge länger!</p>
+      </div>
+    </section>
+
+    <aside class="fake-ad" aria-label="Parodie-Werbung">
+      <div class="pride-flags" aria-hidden="true"><span class="pride-flag rainbow"></span><span class="pride-flag trans"></span><span class="pride-flag bi"></span><span class="pride-flag pan"></span><span class="pride-flag nonbinary"></span><span class="pride-flag lesbian"></span><span class="pride-flag ace"></span></div>
+      <div class="ad-copy">
+        <span class="ad-tag">📢 ANZEIGE · FAKE-WERBUNG · NUR SPASS</span>
+        <h2>Turbo-Socken™ — der Boost für deine Füße! 🧦</h2>
+        <p>Bis zu 9000% mehr Speed* und null Hausaufgaben. Heute für <strong>0 €</strong> — weil das Produkt komplett erfunden ist.<br><small>*Zahl frei ausgedacht. Nicht im Handel. Bitte nicht nach Socken suchen.</small></p>
+      </div>
+      <button class="ad-button" id="ad-button" type="button">NICHT KAUFEN 😎</button>
+    </aside>
+    <footer><div class="pride-flags" aria-hidden="true"><span class="pride-flag rainbow"></span><span class="pride-flag trans"></span><span class="pride-flag bi"></span><span class="pride-flag pan"></span><span class="pride-flag nonbinary"></span><span class="pride-flag lesbian"></span><span class="pride-flag ace"></span></div>Kein echtes Produkt, kein echtes Rennen — nur ein kleines Spiel zum Spaß.</footer>
+  </main>
+
+  <div class="shake-party" id="shake-party" role="dialog" aria-modal="true" aria-labelledby="shake-party-title" hidden>
+    <div class="shake-splat one" aria-hidden="true"></div>
+    <div class="shake-splat two" aria-hidden="true"></div>
+    <div class="shake-splat three" aria-hidden="true"></div>
+    <div class="shake-party-card">
+      <div aria-hidden="true" style="font-size:3.4rem">🥤💖✨</div>
+      <h2 class="shake-party-title" id="shake-party-title">100 % Freundschaft!</h2>
+      <p class="shake-party-copy" id="shake-party-copy">Mokka: „Lecker! Freundschafts-Milchshake-Party!“</p>
+      <button class="primary" id="close-shake-party" type="button">YUM! WEITER TANZEN</button>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const overlay = document.getElementById("overlay");
+      const titleEl = document.getElementById("overlay-title");
+      const copyEl = document.getElementById("overlay-copy");
+      const emojiEl = document.getElementById("result-emoji");
+      const startButton = document.getElementById("start");
+      const distanceEl = document.getElementById("distance");
+      const speedEl = document.getElementById("speed");
+      const bestEl = document.getElementById("best");
+      const starsEl = document.getElementById("stars");
+      const adButton = document.getElementById("ad-button");
+      const nitroFill = document.getElementById("nitro-fill");
+      const nitroHint = document.getElementById("nitro-hint");
+      const boostButton = document.getElementById("boost");
+      const pauseButton = document.getElementById("pause");
+      const touchBoostButton = document.getElementById("touch-boost");
+      const soundButton = document.getElementById("sound");
+      const toast = document.getElementById("toast");
+      const currentView = { name: "race" };
+      const saunaScoreEl = document.getElementById("sauna-score");
+      const saunaTimeEl = document.getElementById("sauna-time");
+      const saunaStatusEl = document.getElementById("sauna-status");
+      const beatDisplay = document.getElementById("beat-display");
+      const saunaStartButton = document.getElementById("sauna-start");
+      const kitchenScoreEl = document.getElementById("kitchen-score");
+      const kitchenTimeEl = document.getElementById("kitchen-time");
+      const kitchenStatusEl = document.getElementById("kitchen-status");
+      const orderItemEl = document.getElementById("order-item");
+      const kitchenStartButton = document.getElementById("kitchen-start");
+      const ingredients = [...document.querySelectorAll(".ingredient")];
+      const ballerinaTab = document.getElementById("ballerina-tab");
+      const ballerinaPasswordForm = document.getElementById("ballerina-password-form");
+      const ballerinaPasswordInput = document.getElementById("ballerina-password");
+      const ballerinaPasswordGate = document.getElementById("ballerina-password-gate");
+      const ballerinaContent = document.getElementById("ballerina-content");
+      const ballerinaPasswordError = document.getElementById("ballerina-password-error");
+      const ballerinaSequenceEl = document.getElementById("ballerina-sequence");
+      const ballerinaScoreEl = document.getElementById("ballerina-score");
+      const ballerinaStatusEl = document.getElementById("ballerina-status");
+      const ballerinaStage = document.querySelector(".ballerina-stage");
+      const ballerinaReaction = document.getElementById("ballerina-reaction");
+      const friendshipFill = document.getElementById("friendship-fill");
+      const friendshipValue = document.getElementById("friendship-value");
+      const friendshipTrack = document.getElementById("friendship-track");
+      const shakeParty = document.getElementById("shake-party");
+      const shakePartyCopy = document.getElementById("shake-party-copy");
+      const ballerinaStartButton = document.getElementById("ballerina-start");
+      const ballerinaSteps = [...document.querySelectorAll("[data-ballerina-step]")];
+      const ingredientsList = [
+        { emoji: "🥔", name: "Kartoffel" },
+        { emoji: "🥕", name: "Karotte" },
+        { emoji: "🍅", name: "Tomate" },
+        { emoji: "🧀", name: "Käse" }
+      ];
+      const danceSteps = ["←", "↓", "↑", "→"];
+      const laneCount = 3;
+      const obstacleEmojis = ["🚧", "🛞", "🗿", "🐊", "🍌", "🛒"];
+      const carPaints = ["#ff69c9", "#63eeff", "#ffd65d"];
+      const carLabels = ["Pinkes Auto", "Blaues Auto", "Goldenes Auto"];
+      const keys = new Set();
+      const modes = {
+        chill: { speed: .68, spawn: 1.48, label: "Chill" },
+        normal: { speed: .86, spawn: 1.16, label: "Normal" },
+        turbo: { speed: 1.02, spawn: .91, label: "Turbo" }
+      };
+      let width = 0;
+      let height = 0;
+      let dpr = 1;
+      let running = false;
+      let paused = false;
+      let animationFrame = 0;
+      let lastTime = 0;
+      let elapsed = 0;
+      let distance = 0;
+      let spawnIn = .65;
+      let roadOffset = 0;
+      let playerLane = 1;
+      let playerX = 0;
+      let targetX = 0;
+      let obstacles = [];
+      let particles = [];
+      let crashFlash = 0;
+      let stars = 0;
+      let lives = 3;
+      let nitro = 0;
+      let boostTime = 0;
+      let invulnerableTime = 0;
+      let currentMode = "chill";
+      let toastTimeout = 0;
+      let touchStartX = null;
+      let carIndex = loadCar();
+      let soundOn = false;
+      let audioContext = null;
+      let saunaRunning = false;
+      let saunaScore = 0;
+      let saunaCombo = 0;
+      let saunaSeconds = 25;
+      let saunaBeat = null;
+      let saunaBeatTimer = 0;
+      let saunaDeadline = 0;
+      let saunaClock = 0;
+      let kitchenRunning = false;
+      let kitchenScore = 0;
+      let kitchenCombo = 0;
+      let kitchenSeconds = 20;
+      let kitchenClock = 0;
+      let currentOrder = ingredientsList[0];
+      let ballerinaUnlocked = loadBallerinaUnlock();
+      let ballerinaPasswordAccepted = false;
+      let ballerinaRunning = false;
+      let ballerinaScore = 0;
+      let ballerinaSequence = [];
+      let ballerinaInput = [];
+      let ballerinaRoundTimer = 0;
+      let friendship = loadFriendship();
+      let complimentTimeout = 0;
+      let best = loadBest();
+
+      function loadFriendship() {
+        try {
+          const resetKey = "rainbowArcadeMokkaFriendshipReset";
+          if (localStorage.getItem(resetKey) !== "yes") {
+            localStorage.removeItem("rainbowArcadeMokkaFriendship");
+            localStorage.setItem(resetKey, "yes");
+            return 0;
+          }
+          const value = Number(localStorage.getItem("rainbowArcadeMokkaFriendship"));
+          return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+        } catch (error) {
+          console.warn("Freundschaftswert konnte nicht geladen werden.", error);
+          return 0;
+        }
+      }
+
+      function updateFriendship() {
+        friendshipFill.style.width = `${friendship}%`;
+        friendshipValue.textContent = `${friendship}%`;
+        friendshipTrack.setAttribute("aria-valuenow", String(friendship));
+      }
+
+      function celebrateFriendship() {
+        shakePartyCopy.textContent = "Mokka: „Lecker! Freundschafts-Milchshake-Party!“";
+        shakeParty.hidden = false;
+        document.getElementById("close-shake-party").focus();
+        if ("speechSynthesis" in window && "SpeechSynthesisUtterance" in window) {
+          window.speechSynthesis.cancel();
+          const cheer = new SpeechSynthesisUtterance("Lecker! Freundschafts-Milchshake-Party!");
+          cheer.lang = "de-DE";
+          cheer.rate = 1.05;
+          window.speechSynthesis.speak(cheer);
+        }
+      }
+
+      updateFriendship();
+      function loadBallerinaUnlock() {
+        try {
+          return localStorage.getItem("rainbowArcadeVirtualSnow") === "yes";
+        } catch (error) {
+          console.warn("Freischaltung wird nur für diese Sitzung gespeichert.", error);
+          return false;
+        }
+      }
+
+      ballerinaTab.disabled = !ballerinaUnlocked;
+      if (ballerinaUnlocked) {
+        ballerinaTab.textContent = "☕ Chiki-Briki";
+        ballerinaTab.title = "Freigeschaltet mit virtuellem Schnee-Slush!";
+        const snackButton = document.getElementById("snow-snack");
+        snackButton.disabled = true;
+        snackButton.textContent = "FREIGESCHALTET! ☕";
+      }
+      function loadCar() {
+        try {
+          const value = Number(localStorage.getItem("rainbowRacerCar"));
+          return Number.isInteger(value) && value >= 0 && value < 3 ? value : 0;
+        } catch (error) {
+          console.warn("Auto-Auswahl konnte nicht geladen werden.", error);
+          return 0;
+        }
+      }
+
+      function loadBest() {
+        try {
+          const value = Number(localStorage.getItem("rainbowRacerBest"));
+          return Number.isFinite(value) && value > 0 ? value : 0;
+        } catch (error) {
+          console.warn("Bestleistung konnte nicht geladen werden.", error);
+          return 0;
+        }
+      }
+
+      bestEl.textContent = `${best} m`;
+      document.querySelectorAll(".car-choice").forEach(button => {
+        button.setAttribute("aria-pressed", String(Number(button.dataset.car) === carIndex));
+      });
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = rect.width;
+        height = rect.height;
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        playerX = laneX(playerLane, 1);
+        targetX = playerX;
+        draw();
+      }
+
+      function roadGeometry(progress) {
+        const horizon = height * .16;
+        const bottom = height * .97;
+        const y = horizon + progress * (bottom - horizon);
+        const halfTop = width * .105;
+        const halfBottom = width * .47;
+        const half = halfTop + (halfBottom - halfTop) * progress;
+        return { y, half, center: width / 2, progress };
+      }
+
+      function laneX(lane, progress) {
+        const road = roadGeometry(progress);
+        return road.center + (lane - 1) * road.half * .59;
+      }
+
+      function drawRoad() {
+        const horizon = height * .16;
+        const bottom = height * .97;
+        const roadTop = roadGeometry(0);
+        const roadBottom = roadGeometry(1);
+
+        const sky = ctx.createLinearGradient(0, 0, 0, horizon + 40);
+        sky.addColorStop(0, "#1a183f");
+        sky.addColorStop(1, "#fa87cb");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.fillStyle = "#34214b";
+        ctx.beginPath();
+        ctx.moveTo(0, horizon + 12);
+        ctx.lineTo(width * .18, horizon - 14);
+        ctx.lineTo(width * .33, horizon + 15);
+        ctx.lineTo(width * .55, horizon - 25);
+        ctx.lineTo(width * .78, horizon + 10);
+        ctx.lineTo(width, horizon - 7);
+        ctx.lineTo(width, bottom);
+        ctx.lineTo(0, bottom);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#30354a";
+        ctx.beginPath();
+        ctx.moveTo(roadTop.center - roadTop.half, horizon);
+        ctx.lineTo(roadTop.center + roadTop.half, horizon);
+        ctx.lineTo(roadBottom.center + roadBottom.half, bottom);
+        ctx.lineTo(roadBottom.center - roadBottom.half, bottom);
+        ctx.closePath();
+        ctx.fill();
+
+        for (let band = 0; band < 18; band++) {
+          const progress = ((band / 18 + roadOffset) % 1);
+          const geo = roadGeometry(progress);
+          const stripeHeight = Math.max(2, 2 + progress * 12);
+          const stripeWidth = 3 + progress * 8;
+          ctx.fillStyle = band % 2 ? "#fc5aa4" : "#62e9ff";
+          ctx.fillRect(geo.center - geo.half - stripeWidth / 2, geo.y, stripeWidth, stripeHeight);
+          ctx.fillRect(geo.center + geo.half - stripeWidth / 2, geo.y, stripeWidth, stripeHeight);
+        }
+
+        for (let divider = 1; divider < laneCount; divider++) {
+          const xTop = roadTop.center + (divider - 1) * roadTop.half * .666;
+          const xBottom = roadBottom.center + (divider - 1) * roadBottom.half * .666;
+          for (let stripe = 0; stripe < 10; stripe++) {
+            const progress = ((stripe / 10 + roadOffset) % 1);
+            const geo = roadGeometry(progress);
+            const x = width / 2 + (divider - 1) * geo.half * .666;
+            const dashHeight = 3 + progress * 19;
+            const dashWidth = 1 + progress * 3;
+            ctx.globalAlpha = .32 + progress * .5;
+            ctx.fillStyle = "#fff4d6";
+            ctx.fillRect(x - dashWidth / 2, geo.y, dashWidth, dashHeight);
+          }
+        }
+        ctx.globalAlpha = 1;
+
+        for (let i = 0; i < 13; i++) {
+          const progress = ((i / 13 + roadOffset * .72) % 1);
+          const y = horizon + progress * (bottom - horizon);
+          const size = 2 + progress * 5;
+          ctx.globalAlpha = .28 + progress * .65;
+          ctx.fillStyle = ["#fff078", "#fc85dd", "#70edff"][i % 3];
+          ctx.beginPath();
+          ctx.arc((i * 73 + 23) % width, y, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      function roundedRect(x, y, w, h, radius) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, radius);
+        ctx.fill();
+      }
+
+      function drawCar(x, y, scale, color, emoji = "🏎️") {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.scale(scale, scale);
+        const flicker = invulnerableTime > 0 && Math.floor(invulnerableTime * 14) % 2 === 0;
+        ctx.globalAlpha = flicker ? .46 : 1;
+        ctx.shadowColor = boostTime > 0 ? "#70eaff" : color;
+        ctx.shadowBlur = boostTime > 0 ? 30 : 16;
+        ctx.fillStyle = "rgba(0,0,0,.4)";
+        ctx.beginPath();
+        ctx.ellipse(0, 8, 24, 34, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "#14101d";
+        roundedRect(-21, -22, 9, 18, 4);
+        roundedRect(12, -22, 9, 18, 4);
+        roundedRect(-21, 12, 9, 18, 4);
+        roundedRect(12, 12, 9, 18, 4);
+        const paint = ctx.createLinearGradient(-18, 0, 18, 0);
+        paint.addColorStop(0, boostTime > 0 ? "#47dfff" : carPaints[carIndex]);
+        paint.addColorStop(.48, boostTime > 0 ? "#9afaff" : "#fff3ff");
+        paint.addColorStop(1, boostTime > 0 ? "#638aff" : carPaints[carIndex]);
+        ctx.fillStyle = paint;
+        ctx.beginPath();
+        ctx.moveTo(-14, 25);
+        ctx.lineTo(-18, -12);
+        ctx.quadraticCurveTo(-17, -25, -9, -29);
+        ctx.lineTo(9, -29);
+        ctx.quadraticCurveTo(17, -25, 18, -12);
+        ctx.lineTo(14, 25);
+        ctx.quadraticCurveTo(0, 32, -14, 25);
+        ctx.fill();
+        ctx.fillStyle = "#272a49";
+        ctx.beginPath();
+        ctx.moveTo(-12, -11);
+        ctx.quadraticCurveTo(-10, -22, -5, -23);
+        ctx.lineTo(5, -23);
+        ctx.quadraticCurveTo(10, -21, 12, -11);
+        ctx.lineTo(10, -3);
+        ctx.lineTo(-10, -3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#c8f7ff";
+        roundedRect(-13, 17, 7, 3, 1);
+        roundedRect(6, 17, 7, 3, 1);
+        ctx.fillStyle = "#fff1a1";
+        roundedRect(-11, -27, 5, 3, 1);
+        roundedRect(6, -27, 5, 3, 1);
+        if (boostTime > 0) {
+          ctx.globalAlpha = .85;
+          ctx.fillStyle = "#71eaff";
+          ctx.beginPath();
+          ctx.moveTo(-9, 28);
+          ctx.lineTo(-5, 28);
+          ctx.lineTo(-8, 44 + Math.random() * 12);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(5, 28);
+          ctx.lineTo(9, 28);
+          ctx.lineTo(8, 44 + Math.random() * 12);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawObjects() {
+        [...obstacles].sort((a, b) => a.progress - b.progress).forEach(item => {
+          const geo = roadGeometry(item.progress);
+          const x = laneX(item.lane, item.progress);
+          const size = 19 + item.progress * 35;
+          ctx.save();
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = `${size}px sans-serif`;
+          ctx.shadowColor = item.type === "star" ? "#ffed75" : "#ff66b6";
+          ctx.shadowBlur = 10 + item.progress * 14;
+          ctx.fillText(item.emoji, x, geo.y);
+          ctx.restore();
+        });
+      }
+
+      function drawParticles() {
+        particles.forEach(particle => {
+          ctx.globalAlpha = Math.max(0, particle.life / .55);
+          ctx.fillStyle = particle.color;
+          ctx.beginPath();
+          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+      }
+
+      function draw() {
+        if (!width || !height) return;
+        ctx.clearRect(0, 0, width, height);
+        drawRoad();
+        drawObjects();
+        drawParticles();
+        const carY = height * .82;
+        const scale = Math.max(.78, Math.min(1.12, width / 500));
+        drawCar(playerX, carY + Math.sin(elapsed * 11) * 2, scale, "#64f0ff");
+        ctx.save();
+        ctx.fillStyle = "#fff";
+        ctx.font = "900 12px Trebuchet MS";
+        ctx.textAlign = "left";
+        ctx.fillText(`${"❤️".repeat(lives)}${"🖤".repeat(3 - lives)}`, 12, 24);
+        if (boostTime > 0) {
+          ctx.fillStyle = "#75efff";
+          ctx.textAlign = "right";
+          ctx.fillText("⚡ NITRO", width - 12, 24);
+        }
+        ctx.restore();
+        if (crashFlash > 0) {
+          ctx.fillStyle = `rgba(255, 66, 122, ${Math.min(.33, crashFlash * .33)})`;
+          ctx.fillRect(0, 0, width, height);
+        }
+      }
+
+      function addBurst(x, y, color) {
+        for (let i = 0; i < 12; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 35 + Math.random() * 110;
+          particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: .55,
+            size: 2 + Math.random() * 3,
+            color
+          });
+        }
+      }
+
+      function spawnObject() {
+        const lane = Math.floor(Math.random() * laneCount);
+        const star = Math.random() < .31;
+        obstacles.push({
+          lane,
+          progress: 0,
+          type: star ? "star" : "block",
+          emoji: star ? (Math.random() < .22 ? "⚡" : "⭐") : obstacleEmojis[Math.floor(Math.random() * obstacleEmojis.length)],
+          checked: false
+        });
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        window.clearTimeout(toastTimeout);
+        toastTimeout = window.setTimeout(() => toast.classList.remove("show"), 900);
+      }
+
+      function playTone(frequency, duration = .09, type = "sine") {
+        if (!soundOn) return;
+        try {
+          audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          oscillator.type = type;
+          oscillator.frequency.value = frequency;
+          gain.gain.setValueAtTime(.045, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + duration);
+          oscillator.connect(gain);
+          gain.connect(audioContext.destination);
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + duration);
+        } catch (error) {
+          soundOn = false;
+          soundButton.textContent = "🔇";
+          soundButton.setAttribute("aria-label", "Sound einschalten");
+          console.warn("Sound konnte nicht abgespielt werden.", error);
+        }
+      }
+
+      function refreshNitro() {
+        nitroFill.style.width = `${nitro}%`;
+        nitroHint.textContent = boostTime > 0 ? "BOOST AKTIV!" : (nitro >= 35 ? "SHIFT / ⚡ bereit" : `${Math.floor(nitro)}% · Sterne sammeln`);
+        boostButton.disabled = !running || paused || boostTime > 0 || nitro < 35;
+        touchBoostButton.disabled = !running || paused || boostTime > 0 || nitro < 35;
+      }
+
+      function activateBoost() {
+        if (!running || paused || boostTime > 0 || nitro < 35) return;
+        nitro -= 35;
+        boostTime = 2.6;
+        invulnerableTime = Math.max(invulnerableTime, boostTime);
+        showToast("NITRO BOOST! ⚡");
+        playTone(780, .2, "sawtooth");
+        addBurst(playerX, height * .82, "#66eaff");
+        refreshNitro();
+      }
+
+      function lockGarage(locked) {
+        document.querySelectorAll(".mode-button, .car-choice").forEach(button => {
+          button.disabled = locked;
+        });
+      }
+
+      function pauseGame() {
+        if (!running) return;
+        paused = !paused;
+        pauseButton.textContent = paused ? "▶" : "Ⅱ";
+        pauseButton.setAttribute("aria-label", paused ? "Spiel fortsetzen" : "Spiel pausieren");
+        if (paused) {
+          window.cancelAnimationFrame(animationFrame);
+          titleEl.textContent = "Boxenstopp! ⏸️";
+          copyEl.textContent = "Kurze Verschnaufpause. Dein Rennen wartet hier auf dich.";
+          emojiEl.textContent = "🧰";
+          startButton.textContent = "WEITERFAHREN ▶";
+          overlay.hidden = false;
+        } else {
+          overlay.hidden = true;
+          lastTime = performance.now();
+          animationFrame = window.requestAnimationFrame(frame);
+        }
+        refreshNitro();
+      }
+
+      function update(delta) {
+        elapsed += delta;
+        const settings = modes[currentMode];
+        const pace = Math.min(1.85, settings.speed + elapsed * .009);
+        const boostedPace = boostTime > 0 ? pace * 1.42 : pace;
+        distance += delta * boostedPace * 26;
+        boostTime = Math.max(0, boostTime - delta);
+        invulnerableTime = Math.max(0, invulnerableTime - delta);
+        roadOffset = (roadOffset + delta * pace * .62) % 1;
+        spawnIn -= delta;
+        if (spawnIn <= 0) {
+          spawnObject();
+          spawnIn = Math.max(.53, settings.spawn - elapsed * .006) + Math.random() * .38;
+        }
+
+        const target = laneX(playerLane, 1);
+        targetX += (target - targetX) * Math.min(1, delta * 14);
+        playerX = targetX;
+
+        obstacles.forEach(item => {
+          if (!running) return;
+          item.progress += delta * boostedPace * .3;
+          if (!item.checked && item.progress > .79 && item.progress < .9 && item.lane === playerLane) {
+            item.checked = true;
+            const geo = roadGeometry(item.progress);
+            const x = laneX(item.lane, item.progress);
+            if (item.type === "star") {
+              stars++;
+              distance += 28;
+              nitro = Math.min(100, nitro + 22);
+              addBurst(x, geo.y, item.emoji === "⚡" ? "#69eaff" : "#ffe875");
+              showToast(item.emoji === "⚡" ? "NITRO-CANISTER! +35 ⚡" : "STERN GESAMMELT! +22 ⚡");
+              playTone(item.emoji === "⚡" ? 1040 : 780, .12);
+              if (item.emoji === "⚡") nitro = Math.min(100, nitro + 13);
+              item.remove = true;
+            } else if (invulnerableTime > 0) {
+              addBurst(x, geo.y, "#6beaff");
+              playTone(560, .08);
+              item.remove = true;
+              showToast("ABGEBLOCKT! 🛡️");
+            } else {
+              lives--;
+              invulnerableTime = 1.35;
+              item.remove = true;
+              crashFlash = .7;
+              addBurst(x, geo.y, "#ff6d9d");
+              playTone(150, .22, "sawtooth");
+              showToast(lives > 0 ? `BUMPER! Noch ${"❤️".repeat(lives)}` : "LETZTES LEBEN!");
+              if (lives <= 0) finish(true);
+            }
+          }
+          if (!item.checked && item.type === "block" && item.progress >= .94) {
+            item.checked = true;
+            if (Math.abs(item.lane - playerLane) === 1) {
+              distance += 14;
+              showToast("KNAPP VORBEI! +14 m ✨");
+              addBurst(laneX(item.lane, item.progress), roadGeometry(item.progress).y, "#ff9ee9");
+            }
+          }
+          if (item.progress > 1.08) item.remove = true;
+        });
+        obstacles = obstacles.filter(item => !item.remove);
+        if (!running) return;
+
+        particles.forEach(particle => {
+          particle.life -= delta;
+          particle.x += particle.vx * delta;
+          particle.y += particle.vy * delta;
+          particle.vy += 70 * delta;
+        });
+        particles = particles.filter(particle => particle.life > 0);
+        crashFlash = Math.max(0, crashFlash - delta);
+        distanceEl.textContent = `${Math.floor(distance)} m`;
+        speedEl.textContent = `${Math.floor(92 + boostedPace * 42)} km/h`;
+        starsEl.textContent = stars;
+        refreshNitro();
+      }
+
+      function frame(now) {
+        if (!running) return;
+        const delta = Math.min((now - lastTime) / 1000, .05);
+        lastTime = now;
+        update(delta);
+        draw();
+        if (running) animationFrame = window.requestAnimationFrame(frame);
+      }
+
+      function finish(crashed) {
+        if (!running) return;
+        running = false;
+        paused = false;
+        window.cancelAnimationFrame(animationFrame);
+        crashFlash = crashed ? 1 : 0;
+        draw();
+        const result = Math.floor(distance);
+        const newRecord = result > best;
+        if (newRecord) {
+          best = result;
+          bestEl.textContent = `${best} m`;
+          try {
+            localStorage.setItem("rainbowRacerBest", String(best));
+          } catch (error) {
+            console.warn("Bestleistung konnte nicht gespeichert werden.", error);
+          }
+        }
+        emojiEl.textContent = crashed ? "💥🏎️" : "🏁🌈";
+        titleEl.textContent = crashed ? "Crash! Alles gut, Racer." : "Rennen beendet!";
+        copyEl.textContent = `Du bist ${result} Meter gefahren und hast ${stars} ⭐ gesammelt${newRecord ? " — neuer Rekord!" : "."} Modus: ${modes[currentMode].label}. Nochmal?`;
+        startButton.textContent = "NOCH EINE RUNDE ↻";
+        overlay.hidden = false;
+        lockGarage(false);
+        pauseButton.disabled = true;
+        pauseButton.textContent = "Ⅱ";
+        refreshNitro();
+      }
+
+      function startGame() {
+        window.cancelAnimationFrame(animationFrame);
+        elapsed = 0;
+        distance = 0;
+        stars = 0;
+        lives = 3;
+        nitro = 0;
+        boostTime = 0;
+        invulnerableTime = 0;
+        paused = false;
+        spawnIn = .65;
+        roadOffset = 0;
+        playerLane = 1;
+        playerX = laneX(playerLane, 1);
+        targetX = playerX;
+        obstacles = [];
+        particles = [];
+        crashFlash = 0;
+        distanceEl.textContent = "0 m";
+        speedEl.textContent = "0 km/h";
+        starsEl.textContent = "0";
+        pauseButton.disabled = false;
+        pauseButton.textContent = "Ⅱ";
+        pauseButton.setAttribute("aria-label", "Spiel pausieren");
+        refreshNitro();
+        overlay.hidden = true;
+        lockGarage(true);
+        running = true;
+        lastTime = performance.now();
+        animationFrame = window.requestAnimationFrame(frame);
+      }
+
+      function steer(direction) {
+        if (!running || paused) return;
+        playerLane = Math.max(0, Math.min(laneCount - 1, playerLane + direction));
+      }
+
+      function stopSauna(message) {
+        saunaRunning = false;
+        window.clearInterval(saunaClock);
+        window.clearTimeout(saunaBeatTimer);
+        window.clearTimeout(saunaDeadline);
+        saunaBeat = null;
+        beatDisplay.textContent = "🎵";
+        beatDisplay.classList.remove("live");
+        document.querySelectorAll(".dance-pad").forEach(button => { button.disabled = true; });
+        saunaStartButton.textContent = "NOCH EIN SAUNA-SET 🔥";
+        saunaStatusEl.textContent = message;
+      }
+
+      function nextSaunaBeat() {
+        if (!saunaRunning) return;
+        saunaBeat = danceSteps[Math.floor(Math.random() * danceSteps.length)];
+        beatDisplay.textContent = saunaBeat;
+        beatDisplay.classList.add("live");
+        window.clearTimeout(saunaDeadline);
+        saunaDeadline = window.setTimeout(() => {
+          if (!saunaRunning || saunaBeat === null) return;
+          saunaBeat = null;
+          saunaCombo = 0;
+          saunaStatusEl.textContent = "Zu spät! Wieder in den Beat finden. 🎵";
+          beatDisplay.textContent = "🎵";
+          beatDisplay.classList.remove("live");
+          saunaBeatTimer = window.setTimeout(nextSaunaBeat, 260);
+        }, 760);
+      }
+
+      function hitDancePad(step) {
+        if (!saunaRunning || saunaBeat === null) return;
+        if (step === saunaBeat) {
+          saunaCombo++;
+          saunaScore += 10 + Math.min(saunaCombo, 10) * 2;
+          saunaScoreEl.textContent = saunaScore;
+          saunaStatusEl.textContent = saunaCombo >= 5 ? `🔥 ${saunaCombo}er Combo! Panther-Style!` : "PERFEKT! Panther approved. ✨";
+          playTone(580 + Math.min(saunaCombo, 8) * 55, .08);
+        } else {
+          saunaCombo = 0;
+          saunaStatusEl.textContent = "Falscher Schritt — gleich kommt der nächste! 💃";
+          playTone(180, .07, "triangle");
+        }
+        saunaBeat = null;
+        beatDisplay.textContent = "🎵";
+        beatDisplay.classList.remove("live");
+        window.clearTimeout(saunaDeadline);
+        saunaBeatTimer = window.setTimeout(nextSaunaBeat, 300);
+      }
+
+      function startSauna() {
+        window.clearTimeout(saunaBeatTimer);
+        window.clearTimeout(saunaDeadline);
+        window.clearInterval(saunaClock);
+        saunaRunning = true;
+        saunaScore = 0;
+        saunaCombo = 0;
+        saunaSeconds = 25;
+        saunaBeat = null;
+        saunaScoreEl.textContent = "0";
+        saunaTimeEl.textContent = saunaSeconds;
+        saunaStartButton.textContent = "TANZ LÄUFT… 💃";
+        saunaStatusEl.textContent = "Mach dich bereit für den Beat!";
+        document.querySelectorAll(".dance-pad").forEach(button => { button.disabled = false; });
+        saunaBeatTimer = window.setTimeout(nextSaunaBeat, 650);
+        saunaClock = window.setInterval(() => {
+          saunaSeconds--;
+          saunaTimeEl.textContent = saunaSeconds;
+          if (saunaSeconds <= 0) {
+            stopSauna(`Set vorbei! ${saunaScore} Punkte — die Pantherin feiert dich. 🐆`);
+          } else if (saunaSeconds <= 5) {
+            saunaStatusEl.textContent = `Noch ${saunaSeconds} Sekunden — weiter grooven!`;
+          }
+        }, 1000);
+      }
+
+      function chooseOrder() {
+        const choices = ingredientsList.filter(ingredient => ingredient !== currentOrder);
+        currentOrder = choices[Math.floor(Math.random() * choices.length)];
+        orderItemEl.textContent = `${currentOrder.emoji} ${currentOrder.name}`;
+      }
+
+      function stopKitchen(message) {
+        kitchenRunning = false;
+        window.clearInterval(kitchenClock);
+        ingredients.forEach(button => { button.disabled = true; });
+        kitchenStartButton.textContent = "NOCH EINE SCHICHT 👨‍🍳";
+        kitchenStatusEl.textContent = message;
+      }
+
+      function serveIngredient(emoji) {
+        if (!kitchenRunning) return;
+        if (emoji === currentOrder.emoji) {
+          kitchenCombo++;
+          kitchenScore += 10 + Math.min(kitchenCombo, 10) * 2;
+          kitchenScoreEl.textContent = kitchenScore;
+          kitchenStatusEl.textContent = kitchenCombo >= 4 ? `Koch, Bratan! ${kitchenCombo} Bestellungen in Folge! 🔥` : "Perfekt serviert! Der Chef nickt. 👨‍🍳";
+          playTone(620 + Math.min(kitchenCombo, 8) * 45, .08);
+          chooseOrder();
+        } else {
+          kitchenCombo = 0;
+          kitchenStatusEl.textContent = "Das war die falsche Zutat — nächste Bestellung! 😅";
+          playTone(180, .08, "triangle");
+          chooseOrder();
+        }
+      }
+
+      function startKitchen() {
+        window.clearInterval(kitchenClock);
+        kitchenRunning = true;
+        kitchenScore = 0;
+        kitchenCombo = 0;
+        kitchenSeconds = 20;
+        kitchenScoreEl.textContent = "0";
+        kitchenTimeEl.textContent = kitchenSeconds;
+        kitchenStartButton.textContent = "SCHICHT LÄUFT… 🍲";
+        kitchenStatusEl.textContent = "Koch, Bratan! Los geht's!";
+        ingredients.forEach(button => { button.disabled = false; });
+        chooseOrder();
+        kitchenClock = window.setInterval(() => {
+          kitchenSeconds--;
+          kitchenTimeEl.textContent = kitchenSeconds;
+          if (kitchenSeconds <= 0) {
+            stopKitchen(`Feierabend! ${kitchenScore} Punkte — was für ein Küchenprofi! 🥘`);
+          } else if (kitchenSeconds <= 5) {
+            kitchenStatusEl.textContent = `Noch ${kitchenSeconds} Sekunden! Schnell, Bratan!`;
+          }
+        }, 1000);
+      }
+
+      function unlockBallerina() {
+        if (ballerinaUnlocked) return;
+        ballerinaUnlocked = true;
+        ballerinaTab.disabled = false;
+        ballerinaTab.textContent = "☕ Chiki-Briki";
+        ballerinaTab.title = "Freigeschaltet mit virtuellem Schnee-Slush!";
+        const snackButton = document.getElementById("snow-snack");
+        snackButton.disabled = true;
+        snackButton.textContent = "FREIGESCHALTET! ☕";
+        kitchenStatusEl.textContent = "Virtueller Schnee-Slush probiert! Chiki-Briki ist freigeschaltet. ❄️";
+        try {
+          localStorage.setItem("rainbowArcadeVirtualSnow", "yes");
+        } catch (error) {
+          console.warn("Freischaltung gilt nur für diese Sitzung.", error);
+        }
+        playTone(920, .14);
+        selectGame("ballerina");
+      }
+
+      function showBallerinaSequence() {
+        const steps = ["⬅️", "⬇️", "⬆️", "➡️"];
+        ballerinaSequence = Array.from(
+          { length: Math.min(3 + Math.floor(ballerinaScore / 30), 8) },
+          () => steps[Math.floor(Math.random() * steps.length)]
+        );
+        ballerinaInput = [];
+        ballerinaSequenceEl.textContent = ballerinaSequence.join(" ");
+        ballerinaStatusEl.textContent = `Merk dir ${ballerinaSequence.length} Tanzschritte!`;
+        ballerinaStartButton.textContent = "FOLGE MERKEN… 👀";
+        ballerinaSteps.forEach(button => { button.disabled = true; });
+        window.clearTimeout(ballerinaRoundTimer);
+        ballerinaRoundTimer = window.setTimeout(() => {
+          if (!ballerinaRunning) return;
+          ballerinaSequenceEl.textContent = "❔ ".repeat(ballerinaSequence.length).trim();
+          ballerinaStatusEl.textContent = "Jetzt nachmachen! Pfeile antippen oder Tasten drücken.";
+          ballerinaStartButton.textContent = "TANZ LÄUFT… 🩰";
+          ballerinaSteps.forEach(button => { button.disabled = false; });
+        }, Math.max(900, 1900 - ballerinaSequence.length * 100));
+      }
+
+      function startBallerina() {
+        if (!ballerinaUnlocked) return;
+        window.clearTimeout(ballerinaRoundTimer);
+        ballerinaRunning = true;
+        ballerinaScore = 0;
+        ballerinaScoreEl.textContent = "0";
+        showBallerinaSequence();
+      }
+
+      function submitBallerinaStep(step) {
+        if (!ballerinaRunning || ballerinaSteps.some(button => button.disabled)) return;
+        const arrows = { "←": "⬅️", "↓": "⬇️", "↑": "⬆️", "→": "➡️" };
+        const expected = ballerinaSequence[ballerinaInput.length];
+        if (arrows[step] !== expected) {
+          ballerinaScore = Math.max(0, ballerinaScore - 5);
+          ballerinaScoreEl.textContent = ballerinaScore;
+          ballerinaStatusEl.textContent = "Ups, falscher Schritt! Neue Folge kommt…";
+          playTone(180, .1, "triangle");
+          window.clearTimeout(ballerinaRoundTimer);
+          ballerinaRoundTimer = window.setTimeout(() => {
+            if (ballerinaRunning) showBallerinaSequence();
+          }, 700);
+          ballerinaSteps.forEach(button => { button.disabled = true; });
+          return;
+        }
+        ballerinaInput.push(step);
+        playTone(520 + ballerinaInput.length * 100, .07);
+        if (ballerinaInput.length === ballerinaSequence.length) {
+          ballerinaScore += ballerinaSequence.length * 10;
+          ballerinaScoreEl.textContent = ballerinaScore;
+          ballerinaStatusEl.textContent = "Chiki Briki! Perfekte Drehung! ☕✨";
+          ballerinaSequenceEl.textContent = "🩰 ☕ 🌟";
+          ballerinaSteps.forEach(button => { button.disabled = true; });
+          window.clearTimeout(ballerinaRoundTimer);
+          ballerinaRoundTimer = window.setTimeout(() => {
+            if (ballerinaRunning) showBallerinaSequence();
+          }, 900);
+        } else {
+          ballerinaStatusEl.textContent = `${ballerinaInput.length}/${ballerinaSequence.length} richtig — weiter!`;
+        }
+      }
+
+      function stopBallerina() {
+        ballerinaRunning = false;
+        window.clearTimeout(ballerinaRoundTimer);
+        ballerinaSteps.forEach(button => { button.disabled = true; });
+        ballerinaStartButton.textContent = "TANZFOLGE STARTEN 🩰";
+      }
+
+      function showBallerinaReaction(kind) {
+        ballerinaStage.classList.remove("reacting-kiss", "reacting-highfive");
+        void ballerinaStage.offsetWidth;
+        if (kind === "kiss") {
+          ballerinaReaction.textContent = "💖 💕 💖";
+          ballerinaStage.classList.add("reacting-kiss");
+          ballerinaStatusEl.textContent = "Ein freundliches Küsschen! Mokka winkt zurück. 💖";
+        } else {
+          ballerinaReaction.textContent = "✨ 🙌 ✨";
+          ballerinaStage.classList.add("reacting-highfive");
+          ballerinaStatusEl.textContent = "High-five! Mokka gibt's fröhlich zurück! ✋✨";
+        }
+        window.setTimeout(() => {
+          ballerinaStage.classList.remove("reacting-kiss", "reacting-highfive");
+        }, 1200);
+      }
+
+      const compliments = {
+        dance: { response: "Mokka: „Danke! Ich hab extra geübt!“ 💃", amount: 12 },
+        style: { response: "Mokka: „Glitzer gehört zu jeder Drehung!“ ✨", amount: 10 },
+        kind: { response: "Mokka: „Jetzt muss ich gleich noch mehr lächeln!“ 🌈", amount: 14 },
+        brave: { response: "Mokka: „Mit Freunden trau ich mich alles!“ ⭐", amount: 12 }
+      };
+
+      function sendCompliment(kind, button) {
+        const compliment = compliments[kind];
+        if (!compliment || button.disabled) return;
+        const previous = friendship;
+        friendship = Math.min(100, friendship + compliment.amount);
+        updateFriendship();
+        const reachedBestFriendship = friendship === 100 && previous < 100;
+        ballerinaStatusEl.textContent = friendship === 100 && previous < 100
+          ? `${compliment.response} Beste Freundschaft erreicht! 💖`
+          : compliment.response;
+        ballerinaStage.classList.remove("reacting-kiss", "reacting-highfive");
+        ballerinaReaction.textContent = "💖 ✨ 💖";
+        ballerinaStage.classList.add("reacting-kiss");
+        window.clearTimeout(complimentTimeout);
+        document.querySelectorAll(".compliment-button").forEach(option => { option.disabled = true; });
+        complimentTimeout = window.setTimeout(() => {
+          document.querySelectorAll(".compliment-button").forEach(option => { option.disabled = false; });
+        }, 1000);
+        try {
+          localStorage.setItem("rainbowArcadeMokkaFriendship", String(friendship));
+        } catch (error) {
+          console.warn("Freundschaftswert gilt nur für diese Sitzung.", error);
+        }
+        playTone(680 + friendship * 2, .09);
+        if (reachedBestFriendship) celebrateFriendship();
+      }
+
+      function sayKochBratan() {
+        const phrase = "Koch, Bratan!";
+        document.getElementById("chef-line").textContent = phrase;
+        document.getElementById("kitchen-speech").textContent = `„${phrase}“`;
+        if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+          saunaStatusEl.textContent = "Koch, Bratan! (Sprachausgabe wird hier nicht unterstützt.)";
+          kitchenStatusEl.textContent = "Koch, Bratan! (Sprachausgabe wird hier nicht unterstützt.)";
+          return;
+        }
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(phrase);
+        utterance.lang = "de-DE";
+        utterance.rate = 1.05;
+        window.speechSynthesis.speak(utterance);
+      }
+
+      function selectGame(name) {
+        if (name === "ballerina" && !ballerinaUnlocked) return;
+        if (running && !paused && name !== "race") pauseGame();
+        if (saunaRunning && name !== "sauna") stopSauna("Sauna-Set pausiert — starte ein neues Set, wenn du zurück bist.");
+        if (kitchenRunning && name !== "kitchen") stopKitchen("Küchenschicht pausiert — starte eine neue Runde, wenn du zurück bist.");
+        if (ballerinaRunning && name !== "ballerina") stopBallerina();
+        currentView.name = name;
+        document.querySelectorAll("[data-game-view]").forEach(view => {
+          view.hidden = view.dataset.gameView !== name;
+        });
+        document.querySelectorAll(".arcade-tab").forEach(button => {
+          button.setAttribute("aria-pressed", String(button.dataset.view === name));
+        });
+        if (name === "ballerina") {
+          ballerinaPasswordGate.hidden = ballerinaPasswordAccepted;
+          ballerinaContent.hidden = !ballerinaPasswordAccepted;
+          if (!ballerinaPasswordAccepted) {
+            ballerinaPasswordInput.value = "";
+            ballerinaPasswordError.textContent = "";
+            ballerinaPasswordInput.focus();
+          }
+        }
+        if (name === "race") resize();
+      }
+
+      document.querySelectorAll(".arcade-tab").forEach(button => {
+        button.addEventListener("click", () => selectGame(button.dataset.view));
+      });
+      ballerinaPasswordForm.addEventListener("submit", event => {
+        event.preventDefault();
+        if (ballerinaPasswordInput.value !== "123456767") {
+          ballerinaPasswordError.textContent = "Das Passwort stimmt nicht. Versuch es noch einmal.";
+          ballerinaPasswordInput.select();
+          return;
+        }
+        ballerinaPasswordAccepted = true;
+        ballerinaPasswordError.textContent = "";
+        ballerinaPasswordGate.hidden = true;
+        ballerinaContent.hidden = false;
+        document.getElementById("ballerina-start").focus();
+      });
+
+      document.querySelectorAll(".dance-pad[data-dance]").forEach(button => {
+        button.addEventListener("click", () => hitDancePad(button.dataset.dance));
+      });
+      ballerinaSteps.forEach(button => {
+        button.addEventListener("click", () => submitBallerinaStep(button.dataset.ballerinaStep));
+      });
+      saunaStartButton.addEventListener("click", startSauna);
+      kitchenStartButton.addEventListener("click", startKitchen);
+      ballerinaStartButton.addEventListener("click", startBallerina);
+      document.getElementById("send-kiss").addEventListener("click", () => showBallerinaReaction("kiss"));
+      document.getElementById("give-highfive").addEventListener("click", () => showBallerinaReaction("highfive"));
+      document.getElementById("snow-snack").addEventListener("click", unlockBallerina);
+      ingredients.forEach(button => {
+        button.addEventListener("click", () => serveIngredient(button.dataset.ingredient));
+      });
+      document.getElementById("chef-line").addEventListener("click", sayKochBratan);
+      document.getElementById("kitchen-speech").addEventListener("click", sayKochBratan);
+      document.querySelectorAll(".compliment-button").forEach(button => {
+        button.addEventListener("click", () => sendCompliment(button.dataset.compliment, button));
+      });
+      document.getElementById("close-shake-party").addEventListener("click", () => {
+        shakeParty.hidden = true;
+        if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+        document.querySelector("#ballerina-view .compliment-button").focus();
+      });
+
+      document.querySelectorAll(".mode-button").forEach(button => {
+        button.addEventListener("click", () => {
+          if (running || button.disabled) return;
+          currentMode = button.dataset.mode;
+          document.querySelectorAll(".mode-button").forEach(option => {
+            option.setAttribute("aria-pressed", String(option.dataset.mode === currentMode));
+          });
+        });
+      });
+
+      document.querySelectorAll(".car-choice").forEach(button => {
+        button.addEventListener("click", () => {
+          if (running || button.disabled) return;
+          carIndex = Number(button.dataset.car);
+          document.querySelectorAll(".car-choice").forEach(option => {
+            option.setAttribute("aria-pressed", String(Number(option.dataset.car) === carIndex));
+          });
+          try {
+            localStorage.setItem("rainbowRacerCar", String(carIndex));
+          } catch (error) {
+            console.warn("Auto-Auswahl konnte nicht gespeichert werden.", error);
+          }
+          showToast(`${carLabels[carIndex]} ausgewählt!`);
+          draw();
+        });
+      });
+
+      window.addEventListener("keydown", event => {
+        if (["ArrowLeft", "ArrowRight", "a", "A", "d", "D", " ", "Shift"].includes(event.key)) event.preventDefault();
+        if (currentView.name === "sauna") {
+          const danceKeys = { ArrowLeft: "←", ArrowDown: "↓", ArrowUp: "↑", ArrowRight: "→" };
+          if (danceKeys[event.key]) {
+            hitDancePad(danceKeys[event.key]);
+            return;
+          }
+        }
+        if (currentView.name === "ballerina") {
+          const danceKeys = { ArrowLeft: "←", ArrowDown: "↓", ArrowUp: "↑", ArrowRight: "→" };
+          if (danceKeys[event.key]) {
+            event.preventDefault();
+            submitBallerinaStep(danceKeys[event.key]);
+          }
+          return;
+        }
+        if (currentView.name === "kitchen") {
+          const ingredientIndex = Number(event.key) - 1;
+          if (ingredientIndex >= 0 && ingredientIndex < ingredients.length) {
+            serveIngredient(ingredients[ingredientIndex].dataset.ingredient);
+          }
+          return;
+        }
+        if (currentView.name !== "race") return;
+        if (keys.has(event.key)) return;
+        keys.add(event.key);
+        if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") steer(-1);
+        if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") steer(1);
+        if (event.key === " " && !running) startGame();
+        if ((event.key === "Shift") && running) activateBoost();
+        if ((event.key.toLowerCase() === "p" || event.key === "Escape") && running) pauseGame();
+      });
+
+      window.addEventListener("keyup", event => keys.delete(event.key));
+      window.addEventListener("blur", () => keys.clear());
+      document.getElementById("left").addEventListener("pointerdown", event => { event.preventDefault(); steer(-1); });
+      document.getElementById("right").addEventListener("pointerdown", event => { event.preventDefault(); steer(1); });
+      touchBoostButton.addEventListener("pointerdown", event => { event.preventDefault(); activateBoost(); });
+      boostButton.addEventListener("click", activateBoost);
+      pauseButton.addEventListener("click", pauseGame);
+      soundButton.addEventListener("click", () => {
+        soundOn = !soundOn;
+        soundButton.textContent = soundOn ? "🔊" : "🔇";
+        soundButton.setAttribute("aria-label", soundOn ? "Sound ausschalten" : "Sound einschalten");
+        soundButton.title = soundOn ? "Sound ausschalten" : "Sound einschalten";
+        if (soundOn) playTone(660, .1);
+      });
+      canvas.addEventListener("pointerdown", event => { touchStartX = event.clientX; });
+      canvas.addEventListener("pointerup", event => {
+        if (touchStartX === null) return;
+        const deltaX = event.clientX - touchStartX;
+        if (Math.abs(deltaX) > 30) steer(deltaX < 0 ? -1 : 1);
+        touchStartX = null;
+      });
+      startButton.addEventListener("click", () => {
+        if (paused) {
+          pauseGame();
+          return;
+        }
+        lockGarage(false);
+        startGame();
+      });
+      adButton.addEventListener("click", () => {
+        adButton.textContent = "GUTE WAHL 😎";
+        adButton.disabled = true;
+      });
+      window.addEventListener("resize", resize);
+      resize();
+    })();
+  </script>
+</body>
+</html>
